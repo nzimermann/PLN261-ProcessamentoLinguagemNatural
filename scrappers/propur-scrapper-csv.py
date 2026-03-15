@@ -155,8 +155,11 @@ def group_entries(container):
 
 def parse_header(p_tag):
     p_copy = BeautifulSoup(str(p_tag), "html.parser").find("p")
-    replace_br(p_copy)
-    text = p_copy.get_text()
+    text = ""
+
+    if not p_copy is None:
+        replace_br(p_copy)
+        text = p_copy.get_text()
 
     titulo = ""
     for span in p_tag.find_all("span", style=True):
@@ -219,8 +222,12 @@ def parse_new_format_entry(elements):
             full_text = ""
             for ip in elem.find_all("p"):
                 ip_copy = BeautifulSoup(str(ip), "html.parser").find("p")
-                replace_br(ip_copy)
-                full_text += ip_copy.get_text() + "\n"
+                full_text = ""
+
+                if not ip_copy is None:
+                    replace_br(ip_copy)
+                    full_text += ip_copy.get_text() + "\n"
+
             pk_match = re.search(
                 r"Palavras.chave\s*:\s*(.+?)(?=\nKeywords|\Z)",
                 full_text,
@@ -259,8 +266,11 @@ def parse_old_format_entry(elements):
         if not hasattr(elem, "name") or elem.name != "p":
             continue
         p_copy = BeautifulSoup(str(elem), "html.parser").find("p")
-        replace_br(p_copy)
-        text = p_copy.get_text()
+        text = ""
+
+        if not p_copy is None:
+            replace_br(p_copy)
+            text = p_copy.get_text()
 
         if re.search(r"\bResumo\s*:", text, re.IGNORECASE):
             in_resumo = True
