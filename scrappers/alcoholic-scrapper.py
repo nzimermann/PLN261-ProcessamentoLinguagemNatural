@@ -29,11 +29,8 @@ CATEGORIAS: list[str] = [
 ]
 
 MENSAGEM_SEM_PRODUTOS = "não há produtos disponíveis nesta categoria"
-
-OUTPUT_DIR = Path("/data")
-
+OUTPUT_DIR = Path("data/raw/product_links")
 REQUEST_DELAY = 1.0
-
 REQUEST_TIMEOUT = 15
 
 HEADERS = {
@@ -198,7 +195,7 @@ def coletar_links_categoria(url_categoria: str, sessao: requests.Session) -> lis
 def salvar_json(slug: str, links: list[str], diretorio: Path) -> None:
     """Salva a lista de links em um arquivo JSON nomeado pelo slug da categoria."""
     diretorio.mkdir(parents=True, exist_ok=True)
-    caminho = diretorio / f"{slug}.json"
+    caminho = diretorio / f"{slug}_links.json"
 
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(links, f, ensure_ascii=False, indent=4)
