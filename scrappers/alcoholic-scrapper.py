@@ -1,16 +1,3 @@
-"""
-Scraper para o site Casa da Bebida.
-
-Extrai links de todas as bebidas por categoria, paginando automaticamente
-até encontrar uma página sem produtos. Salva um JSON por categoria.
-
-Uso:
-    python scraper_casadabebida.py
-
-Dependências:
-    pip install requests beautifulsoup4
-"""
-
 import json
 import time
 import logging
@@ -41,19 +28,14 @@ CATEGORIAS: list[str] = [
     "https://www.casadabebida.com.br/vodka/",
 ]
 
-# Mensagem exibida quando a categoria não tem mais produtos na página
 MENSAGEM_SEM_PRODUTOS = "não há produtos disponíveis nesta categoria"
 
-# Pasta de saída para os JSONs
 OUTPUT_DIR = Path("/data")
 
-# Intervalo entre requisições para não sobrecarregar o servidor (segundos)
 REQUEST_DELAY = 1.0
 
-# Timeout por requisição (segundos)
 REQUEST_TIMEOUT = 15
 
-# Headers para simular um browser comum
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -62,10 +44,6 @@ HEADERS = {
     ),
     "Accept-Language": "pt-BR,pt;q=0.9",
 }
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,6 +56,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Funções auxiliares
 # ---------------------------------------------------------------------------
+
 
 def extrair_slug_categoria(url_categoria: str) -> str:
     """Retorna o slug da categoria a partir da URL.
@@ -136,7 +115,8 @@ def extrair_links_produtos(soup: BeautifulSoup) -> list[str]:
         if not ancora:
             continue
 
-        href: str = ancora.get("href", "").strip()
+        href = ancora.get("href")
+        href = href.strip() if isinstance(href, str) else ""
         if not href:
             continue
 
@@ -153,9 +133,8 @@ def extrair_links_produtos(soup: BeautifulSoup) -> list[str]:
 # Lógica principal por categoria
 # ---------------------------------------------------------------------------
 
-def coletar_links_categoria(
-    url_categoria: str, sessao: requests.Session
-) -> list[str]:
+
+def coletar_links_categoria(url_categoria: str, sessao: requests.Session) -> list[str]:
     """Coleta os links de todos os produtos de uma categoria, paginando.
 
     Interrompe quando encontra uma página sem produtos.
@@ -201,12 +180,18 @@ def coletar_links_categoria(
             break
 
         todos_links.extend(links_pagina)
-        log.info("  %d produto(s) coletado(s) nesta página (total: %d).", len(links_pagina), len(todos_links))
+        log.info(
+            "  %d produto(s) coletado(s) nesta página (total: %d).",
+            len(links_pagina),
+            len(todos_links),
+        )
 
         pagina += 1
         time.sleep(REQUEST_DELAY)
 
-    log.info("Categoria '%s' concluída: %d produto(s) no total.", slug, len(todos_links))
+    log.info(
+        "Categoria '%s' concluída: %d produto(s) no total.", slug, len(todos_links)
+    )
     return todos_links
 
 
@@ -225,6 +210,7 @@ def salvar_json(slug: str, links: list[str], diretorio: Path) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     sessao = requests.Session()
 
@@ -233,8 +219,6 @@ def main() -> None:
 
         links = coletar_links_categoria(url_categoria, sessao)
         salvar_json(slug, links, OUTPUT_DIR)
-
-        # Pausa extra entre categorias
         time.sleep(REQUEST_DELAY)
 
     log.info("Scraping concluído.")
