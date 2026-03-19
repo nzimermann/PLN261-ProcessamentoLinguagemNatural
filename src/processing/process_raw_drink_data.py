@@ -68,6 +68,7 @@ PRODUCTS_FIELDNAMES: list[str] = [
 
 REVIEWS_FIELDNAMES: list[str] = [
     "sku",
+    "id",
     "rating",
     "author",
     "review_body",
@@ -329,6 +330,29 @@ def gravar_csv(
 
 
 # ---------------------------------------------------------------------------
+# Controle do ID incremental de reviews
+# ---------------------------------------------------------------------------
+
+
+def _proximo_review_id() -> int:
+    """Retorna o próximo id disponível para reviews.
+
+    Se reviews.csv ainda não existe (primeira execução), retorna 1.
+    Caso contrário, lê a última linha do arquivo para continuar de onde parou,
+    garantindo que ids sejam únicos mesmo em execuções incrementais.
+    """
+    if not REVIEWS_CSV.exists():
+        return 1
+    ultimo_id = 0
+    with open(REVIEWS_CSV, encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            id_val = row.get("id", "0")
+            if id_val.isdigit():
+                ultimo_id = max(ultimo_id, int(id_val))
+    return ultimo_id + 1
+
+
+# ---------------------------------------------------------------------------
 # Processamento de um arquivo .jsonl completo (um lote / uma categoria)
 # ---------------------------------------------------------------------------
 
@@ -362,6 +386,7 @@ def processar_arquivo(
     products_batch: list[dict] = []
     reviews_batch: list[dict] = []
     skus_vistos: set[str] = set()
+    review_id_counter: int = _proximo_review_id()
 
     for raw in raws:
         sku = str(raw.get("sku", ""))
@@ -381,6 +406,9 @@ def processar_arquivo(
 
         # Transformação das reviews (falhas individuais já logadas internamente)
         reviews = transformar_reviews(raw)
+        for review in reviews:
+            review["id"] = review_id_counter
+            review_id_counter += 1
 
         products_batch.append(produto)
         reviews_batch.extend(reviews)
