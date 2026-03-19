@@ -90,6 +90,7 @@ log = logging.getLogger(__name__)
 # Limpeza de texto
 # ---------------------------------------------------------------------------
 
+
 def limpar_texto(texto: str) -> str:
     """Remove whitespace redundante e entidades HTML de uma string.
 
@@ -116,6 +117,7 @@ def limpar_texto_review(texto: str) -> str:
 # Validação de campos obrigatórios
 # ---------------------------------------------------------------------------
 
+
 class ErroValidacao(Exception):
     """Lançada quando um campo obrigatório está ausente ou com tipo inválido."""
 
@@ -137,6 +139,7 @@ def exigir_campo(dado: dict, campo: str, tipo: type, contexto: str) -> Any:
 # ---------------------------------------------------------------------------
 # Transformação de produto
 # ---------------------------------------------------------------------------
+
 
 def transformar_produto(raw: dict, categoria: str) -> dict:
     """Converte um objeto ld+json bruto no dict limpo para products.csv.
@@ -169,7 +172,9 @@ def transformar_produto(raw: dict, categoria: str) -> dict:
     try:
         price: float = float(price_raw)
     except (TypeError, ValueError):
-        raise ErroValidacao(f"[{ctx}] 'offers.price' não conversível para float: {price_raw!r}")
+        raise ErroValidacao(
+            f"[{ctx}] 'offers.price' não conversível para float: {price_raw!r}"
+        )
 
     availability: str = offers.get("availability", "")
     in_stock: bool = availability.endswith("InStock")
@@ -187,8 +192,14 @@ def transformar_produto(raw: dict, categoria: str) -> dict:
         rating_value_raw = agg.get("ratingValue")
         review_count_raw = agg.get("reviewCount")
         try:
-            rating_value: float | None = round(float(rating_value_raw), 2) if rating_value_raw is not None else None
-            review_count: int = int(review_count_raw) if review_count_raw is not None else 0
+            rating_value: float | None = (
+                round(float(rating_value_raw), 2)
+                if rating_value_raw is not None
+                else None
+            )
+            review_count: int = (
+                int(review_count_raw) if review_count_raw is not None else 0
+            )
         except (TypeError, ValueError):
             rating_value = None
             review_count = 0
@@ -215,6 +226,7 @@ def transformar_produto(raw: dict, categoria: str) -> dict:
 # ---------------------------------------------------------------------------
 # Transformação de reviews
 # ---------------------------------------------------------------------------
+
 
 def transformar_reviews(raw: dict) -> list[dict]:
     """Extrai e limpa todas as reviews de um produto bruto.
@@ -252,12 +264,14 @@ def transformar_reviews(raw: dict) -> list[dict]:
             log.warning("Review ignorada — %s", exc)
             continue
 
-        reviews_limpos.append({
-            "sku": sku,
-            "rating": rating,
-            "author": author,
-            "review_body": review_body,
-        })
+        reviews_limpos.append(
+            {
+                "sku": sku,
+                "rating": rating,
+                "author": author,
+                "review_body": review_body,
+            }
+        )
 
     return reviews_limpos
 
@@ -265,6 +279,7 @@ def transformar_reviews(raw: dict) -> list[dict]:
 # ---------------------------------------------------------------------------
 # I/O: leitura do .jsonl
 # ---------------------------------------------------------------------------
+
 
 def carregar_jsonl(caminho: Path) -> list[dict]:
     """Carrega todas as linhas de um arquivo .jsonl em uma lista de dicts.
@@ -291,6 +306,7 @@ def carregar_jsonl(caminho: Path) -> list[dict]:
 # I/O: gravação dos CSVs
 # ---------------------------------------------------------------------------
 
+
 def gravar_csv(
     caminho: Path,
     fieldnames: list[str],
@@ -315,6 +331,7 @@ def gravar_csv(
 # ---------------------------------------------------------------------------
 # Processamento de um arquivo .jsonl completo (um lote / uma categoria)
 # ---------------------------------------------------------------------------
+
 
 def processar_arquivo(
     caminho_jsonl: Path,
@@ -369,7 +386,9 @@ def processar_arquivo(
         reviews_batch.extend(reviews)
 
     if not products_batch:
-        log.warning("  Nenhum produto válido em '%s'. Arquivo ignorado.", caminho_jsonl.name)
+        log.warning(
+            "  Nenhum produto válido em '%s'. Arquivo ignorado.", caminho_jsonl.name
+        )
         return 0, 0
 
     # Etapa 4: gravação atômica do lote — somente após validação completa
@@ -389,6 +408,7 @@ def processar_arquivo(
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -407,7 +427,11 @@ def main() -> None:
         try:
             produtos, reviews = processar_arquivo(caminho, categoria, primeiro_arquivo)
         except (ValueError, OSError) as exc:
-            log.error("Falha crítica ao processar '%s': %s — arquivo ignorado.", caminho.name, exc)
+            log.error(
+                "Falha crítica ao processar '%s': %s — arquivo ignorado.",
+                caminho.name,
+                exc,
+            )
             continue
 
         if produtos > 0:
