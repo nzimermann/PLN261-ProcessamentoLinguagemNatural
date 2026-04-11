@@ -25,4 +25,7 @@ flowchart TD
     L --> O[fa:fa-map bow vectors]
     M --> P[fa:fa-map tfidf vectors]
     N --> Q[fa:fa-map word2vec vectors]
+    O --> R(fa:fa-bar-chart visualize_results.py)
+    P --> R
+    Q --> R
 ```
