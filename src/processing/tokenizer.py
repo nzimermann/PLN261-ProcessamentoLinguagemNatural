@@ -59,8 +59,8 @@ PROCESSED_DIR = Path("data/processed")
 PRODUCTS_CSV = PROCESSED_DIR / "products.csv"
 REVIEWS_CSV = PROCESSED_DIR / "reviews.csv"
 
-TOKENS_PRODUCTS_JSONL = PROCESSED_DIR / "tokens_products.jsonl"
-TOKENS_REVIEWS_JSONL = PROCESSED_DIR / "tokens_reviews.jsonl"
+TOKENS_PRODUCTS_JSONL = PROCESSED_DIR / "tokens" / "tokens_products.jsonl"
+TOKENS_REVIEWS_JSONL = PROCESSED_DIR / "tokens" / "tokens_reviews.jsonl"
 
 # Modelo spaCy para português — use pt_core_news_lg para melhor acurácia de
 # lematização e POS; use pt_core_news_sm se memória for uma restrição.
