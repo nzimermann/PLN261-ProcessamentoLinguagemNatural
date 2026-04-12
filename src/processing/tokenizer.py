@@ -199,6 +199,7 @@ def tokenizar_produtos(
         textos.append(texto)
 
     gravados = 0
+    caminho_saida.parent.mkdir(parents=True, exist_ok=True)
     with open(caminho_saida, "w", encoding="utf-8") as f_out:
         for (row, campo), doc in zip(
             pares,
@@ -251,6 +252,7 @@ def tokenizar_reviews(
         log.warning("  %d review(s) com review_body vazio ignorada(s).", vazias)
 
     gravados = 0
+    caminho_saida.parent.mkdir(parents=True, exist_ok=True)
     with open(caminho_saida, "w", encoding="utf-8") as f_out:
         for row, doc in zip(
             meta_validos,

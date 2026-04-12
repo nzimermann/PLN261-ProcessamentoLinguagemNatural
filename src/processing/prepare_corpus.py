@@ -103,6 +103,7 @@ def carregar_tokens(caminho: Path) -> list[dict]:
     propagação silenciosa de dados corrompidos.
     """
     registros: list[dict] = []
+    caminho.parent.mkdir(parents=True, exist_ok=True)
     with open(caminho, encoding="utf-8") as f:
         for numero, linha in enumerate(f, start=1):
             linha = linha.strip()
@@ -342,6 +343,7 @@ def validar_consistencia_de_skus(
 
 def salvar_skus(skus: list[str], caminho: Path) -> None:
     """Persiste a lista master de SKUs em JSON."""
+    caminho.parent.mkdir(parents=True, exist_ok=True)
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(skus, f, ensure_ascii=False)
     log.info("corpus_skus.json salvo: %d SKUs → %s", len(skus), caminho)
@@ -349,6 +351,7 @@ def salvar_skus(skus: list[str], caminho: Path) -> None:
 
 def _gravar_jsonl(registros_iter, caminho: Path) -> int:
     """Grava um iterável de dicts como JSONL. Retorna o total gravado."""
+    caminho.parent.mkdir(parents=True, exist_ok=True)
     gravados = 0
     with open(caminho, "w", encoding="utf-8") as f:
         for registro in registros_iter:
