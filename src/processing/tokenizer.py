@@ -45,6 +45,7 @@ import logging
 import sys
 from pathlib import Path
 from typing import Iterator
+from src.config import DATA_DIR
 
 import spacy
 from spacy.language import Language
@@ -54,7 +55,7 @@ from spacy.tokens import Doc
 # Configurações
 # ---------------------------------------------------------------------------
 
-PROCESSED_DIR = Path("data/processed")
+PROCESSED_DIR = DATA_DIR / "processed"
 
 PRODUCTS_CSV = PROCESSED_DIR / "products.csv"
 REVIEWS_CSV = PROCESSED_DIR / "reviews.csv"

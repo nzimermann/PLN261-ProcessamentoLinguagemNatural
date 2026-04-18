@@ -18,6 +18,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from src.config import DATA_DIR
 
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz
@@ -27,8 +28,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 # Configuração — ajuste aqui para experimentar diferentes abordagens
 # ---------------------------------------------------------------------------
 
-CORPUS_DIR = Path("data/processed/corpus")
-VECTORS_BOW_DIR = Path("data/processed/vectors/bow")
+CORPUS_DIR = DATA_DIR / "processed" / "corpus"
+VECTORS_BOW_DIR = DATA_DIR / "processed" / "vectors" / "bow"
 
 CORPUS_JSONL = CORPUS_DIR / "corpus_bow_tfidf.jsonl"
 OUTPUT_MATRIX = VECTORS_BOW_DIR / "bow_matrix.npz"

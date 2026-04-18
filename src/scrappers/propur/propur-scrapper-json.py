@@ -4,9 +4,10 @@ import sys
 import time
 import requests
 from bs4 import BeautifulSoup
+from src.config import DATA_DIR
 
 MAIN_URL = "https://www.ufrgs.br/propur/ensino-pessoal/ensino/producoes/"
-OUTPUT_FILE = "data/producoes_propur.json"
+OUTPUT_FILE = DATA_DIR / "producoes_propur.json"
 REQUEST_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "

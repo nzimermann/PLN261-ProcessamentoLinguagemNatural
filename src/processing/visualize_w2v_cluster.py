@@ -26,6 +26,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from src.config import DATA_DIR
 
 import numpy as np
 from gensim.models import Word2Vec
@@ -34,8 +35,8 @@ from gensim.models import Word2Vec
 # Configuração
 # ---------------------------------------------------------------------------
 
-VECTORS_DIR = Path("data/processed/vectors/w2v")
-CORPUS_JSONL = Path("data/processed/corpus/corpus_w2v.jsonl")
+VECTORS_DIR = DATA_DIR / "processed" / "vectors" / "w2v"
+CORPUS_JSONL = DATA_DIR / "processed" / "corpus" / "corpus_w2v.jsonl"
 
 MATRIX_PATH = VECTORS_DIR / "w2v_matrix.npy"
 SKUS_PATH = VECTORS_DIR / "w2v_skus.json"

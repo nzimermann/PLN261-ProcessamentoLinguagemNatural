@@ -2,6 +2,7 @@ import json
 import time
 import logging
 from pathlib import Path
+from src.config import DATA_DIR
 
 import requests
 from bs4 import BeautifulSoup
@@ -29,7 +30,7 @@ CATEGORIAS: list[str] = [
 ]
 
 MENSAGEM_SEM_PRODUTOS = "não há produtos disponíveis nesta categoria"
-OUTPUT_DIR = Path("data/raw/product_links")
+OUTPUT_DIR = DATA_DIR / "raw" / "product_links"
 REQUEST_DELAY = 1.0
 REQUEST_TIMEOUT = 15
 

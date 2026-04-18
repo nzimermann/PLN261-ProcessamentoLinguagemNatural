@@ -38,9 +38,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 # Configuração
 # ---------------------------------------------------------------------------
 
-VECTORS_DIR = Path("data/processed/vectors")
-CORPUS_DIR = Path("data/processed/corpus")
-PROCESSED_DIR = Path("data/processed")
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent.parent
+
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+VECTORS_DIR = PROCESSED_DIR / "vectors"
+CORPUS_DIR = PROCESSED_DIR / "corpus"
 
 # Matrizes e metadados por método
 BOW_MATRIX = VECTORS_DIR / "bow" / "bow_matrix.npz"

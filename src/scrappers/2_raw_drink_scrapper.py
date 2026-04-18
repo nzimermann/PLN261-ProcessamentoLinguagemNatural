@@ -16,6 +16,7 @@ import json
 import logging
 import time
 from pathlib import Path
+from src.config import DATA_DIR
 
 import requests
 from bs4 import BeautifulSoup
@@ -24,8 +25,8 @@ from bs4 import BeautifulSoup
 # Configurações
 # ---------------------------------------------------------------------------
 
-PRODUCT_LINKS_DIR = Path("data/raw/product_links")
-EXTRACTED_PRODUCTS_DIR = Path("data/raw/extracted_products")
+PRODUCT_LINKS_DIR = DATA_DIR / "raw" / "product_links"
+EXTRACTED_PRODUCTS_DIR = DATA_DIR / "raw" / "extracted_products"
 
 # Intervalo entre requisições (segundos)
 REQUEST_DELAY = 1.0

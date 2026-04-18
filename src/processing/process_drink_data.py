@@ -24,13 +24,14 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from src.config import DATA_DIR
 
 # ---------------------------------------------------------------------------
 # Configurações
 # ---------------------------------------------------------------------------
 
-EXTRACTED_PRODUCTS_DIR = Path("data/raw/extracted_products")
-PROCESSED_DIR = Path("data/processed")
+EXTRACTED_PRODUCTS_DIR = DATA_DIR / "raw" / "extracted_products"
+PROCESSED_DIR = DATA_DIR / "processed"
 
 PRODUCTS_CSV = PROCESSED_DIR / "products.csv"
 REVIEWS_CSV = PROCESSED_DIR / "reviews.csv"

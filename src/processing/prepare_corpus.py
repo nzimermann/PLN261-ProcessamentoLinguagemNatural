@@ -15,12 +15,13 @@ import json
 import logging
 import sys
 from pathlib import Path
+from src.config import DATA_DIR
 
 # ---------------------------------------------------------------------------
 # Configuração
 # ---------------------------------------------------------------------------
 
-PROCESSED_DIR = Path("data/processed")
+PROCESSED_DIR = DATA_DIR / "processed"
 TOKENS_JSONL = PROCESSED_DIR / "tokens" / "tokens_products.jsonl"
 CORPUS_SKUS_JSON = PROCESSED_DIR / "corpus" / "corpus_skus.json"
 CORPUS_BOW_TFIDF_JSONL = PROCESSED_DIR / "corpus" / "corpus_bow_tfidf.jsonl"
