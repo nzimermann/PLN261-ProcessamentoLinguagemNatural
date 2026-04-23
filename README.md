@@ -38,4 +38,4 @@ flowchart TD
 - [ ] Criar um script vectorize_bert.py, utilizando o BERTugues para vetorização dos produtos (verificar se é preciso gerar um corpus específico para este caso)
 - [ ] Criar um heatmap do modelo gerado pelo Word2Vec para comparação dos pares de produtos mais similares
 - [ ] Analisar se o processo de vetorização está correto, heatmap deveria exibir 1.0 para categorias iguais na diagonal principal
-- [ ] Reorganizar os arquivos para uma [estrutura padrão de ciência de dados](https://cookiecutter-data-science.drivendata.org/).
+- [x] Reorganizar os arquivos para uma [estrutura padrão de ciência de dados](https://cookiecutter-data-science.drivendata.org/).

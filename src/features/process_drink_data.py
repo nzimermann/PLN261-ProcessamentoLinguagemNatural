@@ -11,7 +11,7 @@ Estratégia de execução: arquivo por arquivo, gravação somente após valida�
 completa do lote.
 
 Uso:
-    python transformar_produtos.py
+    python process_drink_data.py
 
 Dependências: somente biblioteca padrão do Python (csv, json, html, pathlib, re).
 """

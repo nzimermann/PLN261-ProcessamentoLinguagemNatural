@@ -2,4 +2,3 @@
 .vscode
 .idea
 *.pyc
-data/*
