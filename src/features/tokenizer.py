@@ -41,11 +41,11 @@ Uso:
 
 import csv
 import json
-import logging
 import sys
 from pathlib import Path
 from typing import Iterator
-from src.config import DATA_DIR
+from src import logger
+from src.config import PROCESSED_DIR, TOKENS_DIR
 
 import spacy
 from spacy.language import Language
@@ -55,13 +55,12 @@ from spacy.tokens import Doc
 # Configurações
 # ---------------------------------------------------------------------------
 
-PROCESSED_DIR = DATA_DIR / "processed"
 
 PRODUCTS_CSV = PROCESSED_DIR / "products.csv"
 REVIEWS_CSV = PROCESSED_DIR / "reviews.csv"
 
-TOKENS_PRODUCTS_JSONL = PROCESSED_DIR / "tokens" / "tokens_products.jsonl"
-TOKENS_REVIEWS_JSONL = PROCESSED_DIR / "tokens" / "tokens_reviews.jsonl"
+TOKENS_PRODUCTS_JSONL = TOKENS_DIR / "tokens_products.jsonl"
+TOKENS_REVIEWS_JSONL = TOKENS_DIR / "tokens_reviews.jsonl"
 
 # Modelo spaCy para português — use pt_core_news_lg para melhor acurácia de
 # lematização e POS; use pt_core_news_sm se memória for uma restrição.
@@ -72,18 +71,6 @@ PRODUCT_TEXT_FIELDS = ["name", "description"]
 
 # Tamanho do lote para nlp.pipe() — aumentar melhora throughput em grandes volumes
 BATCH_SIZE = 32
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -100,10 +87,10 @@ def carregar_modelo(nome_modelo: str) -> Language:
     """
     try:
         nlp = spacy.load(nome_modelo, exclude=["parser", "ner"])
-        log.info("Modelo '%s' carregado.", nome_modelo)
+        logger.info("Modelo '%s' carregado.", nome_modelo)
         return nlp
     except OSError:
-        log.error(
+        logger.error(
             "Modelo '%s' não encontrado. Execute:\n" "    python -m spacy download %s",
             nome_modelo,
             nome_modelo,
@@ -185,7 +172,7 @@ def tokenizar_produtos(
     Usa nlp.pipe() para processar em lotes, maximizando throughput.
     Retorna o número de registros gravados.
     """
-    log.info(
+    logger.info(
         "Tokenizando produtos (%d linhas × %d campo(s))…",
         len(rows),
         len(PRODUCT_TEXT_FIELDS),
@@ -215,7 +202,7 @@ def tokenizar_produtos(
             f_out.write(json.dumps(registro, ensure_ascii=False) + "\n")
             gravados += 1
 
-    log.info("  tokens_products.jsonl: %d registro(s) gravado(s).", gravados)
+    logger.info("  tokens_products.jsonl: %d registro(s) gravado(s).", gravados)
     return gravados
 
 
@@ -234,7 +221,7 @@ def tokenizar_reviews(
     Reviews com review_body vazio são ignoradas com aviso.
     Retorna o número de registros gravados.
     """
-    log.info("Tokenizando reviews (%d linhas)…", len(rows))
+    logger.info("Tokenizando reviews (%d linhas)…", len(rows))
 
     # Filtra reviews sem texto e coleta metadados
     meta_validos: list[dict] = []
@@ -250,7 +237,7 @@ def tokenizar_reviews(
         textos.append(texto)
 
     if vazias:
-        log.warning("  %d review(s) com review_body vazio ignorada(s).", vazias)
+        logger.warning("  %d review(s) com review_body vazio ignorada(s).", vazias)
 
     gravados = 0
     caminho_saida.parent.mkdir(parents=True, exist_ok=True)
@@ -268,7 +255,7 @@ def tokenizar_reviews(
             f_out.write(json.dumps(registro, ensure_ascii=False) + "\n")
             gravados += 1
 
-    log.info("  tokens_reviews.jsonl: %d registro(s) gravado(s).", gravados)
+    logger.info("  tokens_reviews.jsonl: %d registro(s) gravado(s).", gravados)
     return gravados
 
 
@@ -281,15 +268,15 @@ def main() -> None:
     # Validação de existência dos arquivos de entrada antes de qualquer trabalho
     for caminho in (PRODUCTS_CSV, REVIEWS_CSV):
         if not caminho.exists():
-            log.error("Arquivo de entrada não encontrado: '%s'", caminho)
+            logger.error("Arquivo de entrada não encontrado: '%s'", caminho)
             sys.exit(1)
 
     nlp = carregar_modelo(SPACY_MODEL)
 
-    log.info("Lendo arquivos de entrada…")
+    logger.info("Lendo arquivos de entrada…")
     products_rows = ler_products_csv(PRODUCTS_CSV)
     reviews_rows = ler_reviews_csv(REVIEWS_CSV)
-    log.info(
+    logger.info(
         "  %d produto(s) | %d review(s) carregados.",
         len(products_rows),
         len(reviews_rows),
@@ -298,13 +285,13 @@ def main() -> None:
     total_produtos = tokenizar_produtos(nlp, products_rows, TOKENS_PRODUCTS_JSONL)
     total_reviews = tokenizar_reviews(nlp, reviews_rows, TOKENS_REVIEWS_JSONL)
 
-    log.info(
+    logger.info(
         "Tokenização concluída: %d registro(s) de produto(s), %d registro(s) de review(s).",
         total_produtos,
         total_reviews,
     )
-    log.info("  → %s", TOKENS_PRODUCTS_JSONL)
-    log.info("  → %s", TOKENS_REVIEWS_JSONL)
+    logger.info("  → %s", TOKENS_PRODUCTS_JSONL)
+    logger.info("  → %s", TOKENS_REVIEWS_JSONL)
 
 
 if __name__ == "__main__":

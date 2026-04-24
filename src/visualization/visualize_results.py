@@ -20,10 +20,8 @@ Uso:
 
 import csv
 import json
-import logging
 import random
 import sys
-from pathlib import Path
 from typing import NamedTuple
 
 import matplotlib.pyplot as plt
@@ -33,30 +31,25 @@ import seaborn as sns
 from matplotlib.figure import Figure
 from scipy.sparse import csr_matrix, load_npz
 from sklearn.metrics.pairwise import cosine_similarity
+from src import logger
+from src.config import *
 
 # ---------------------------------------------------------------------------
 # Configuração
 # ---------------------------------------------------------------------------
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent
-
-PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-VECTORS_DIR = PROCESSED_DIR / "vectors"
-CORPUS_DIR = PROCESSED_DIR / "corpus"
-
 # Matrizes e metadados por método
-BOW_MATRIX = VECTORS_DIR / "bow" / "bow_matrix.npz"
-BOW_SKUS = VECTORS_DIR / "bow" / "bow_skus.json"
-BOW_FEATURES = VECTORS_DIR / "bow" / "bow_features.json"
+BOW_MATRIX = VECTORS_BOW / "bow_matrix.npz"
+BOW_SKUS = VECTORS_BOW / "bow_skus.json"
+BOW_FEATURES = VECTORS_BOW / "bow_features.json"
 
-TFIDF_MATRIX = VECTORS_DIR / "tfidf" / "tfidf_matrix.npz"
-TFIDF_SKUS = VECTORS_DIR / "tfidf" / "tfidf_skus.json"
-TFIDF_FEATURES = VECTORS_DIR / "tfidf" / "tfidf_features.json"
+TFIDF_MATRIX = VECTORS_TFIDF / "tfidf_matrix.npz"
+TFIDF_SKUS = VECTORS_TFIDF / "tfidf_skus.json"
+TFIDF_FEATURES = VECTORS_TFIDF / "tfidf_features.json"
 
-W2V_MATRIX = VECTORS_DIR / "w2v" / "w2v_matrix.npy"
-W2V_SKUS = VECTORS_DIR / "w2v" / "w2v_skus.json"
-W2V_MODEL = VECTORS_DIR / "w2v" / "word2vec.model"
+W2V_MATRIX = VECTORS_W2V / "w2v_matrix.npy"
+W2V_SKUS = VECTORS_W2V / "w2v_skus.json"
+W2V_MODEL = VECTORS_W2V / "word2vec.model"
 
 CORPUS_SKUS = CORPUS_DIR / "corpus_skus.json"
 PRODUCTS_CSV = PROCESSED_DIR / "products.csv"
@@ -69,23 +62,11 @@ SEED_AMOSTRA: int = 42
 N_TOP_FEATURES: int = 10
 
 # Arquivo de saída dos gráficos (None = só exibir, não salvar)
-SALVAR_FIGURA_1: Path | None = VECTORS_DIR / "grafico_top_features.png"
-SALVAR_FIGURA_2: Path | None = VECTORS_DIR / "grafico_heatmap_categorias.png"
+SALVAR_FIGURA_1: Path | None = REPORTS_DIR / "grafico_top_features.png"
+SALVAR_FIGURA_2: Path | None = REPORTS_DIR / "grafico_heatmap_categorias.png"
 
 # DPI das figuras salvas
 DPI: int = 150
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -146,10 +127,10 @@ def carregar_modelo_w2v(caminho: Path):
 
         return Word2Vec.load(str(caminho))
     except ImportError:
-        log.warning("gensim não instalado — top features W2V indisponível.")
+        logger.warning("gensim não instalado — top features W2V indisponível.")
         return None
     except Exception as exc:
-        log.warning("Não foi possível carregar modelo W2V: %s", exc)
+        logger.warning("Não foi possível carregar modelo W2V: %s", exc)
         return None
 
 
@@ -163,7 +144,7 @@ def carregar_dados_metodo(
     """Carrega os artefatos de um método e retorna None se algum estiver ausente."""
     for caminho in filter(None, [caminho_matriz, caminho_skus, caminho_features]):
         if not caminho.exists():
-            log.warning(
+            logger.warning(
                 "Artefato ausente para %s: '%s' — método ignorado.", nome, caminho
             )
             return None
@@ -176,7 +157,7 @@ def carregar_dados_metodo(
     skus = carregar_json(caminho_skus)
     features = carregar_json(caminho_features) if caminho_features else None
 
-    log.info("%-8s carregado: %d produtos × %d dims", nome, *matriz.shape)
+    logger.info("%-8s carregado: %d produtos × %d dims", nome, *matriz.shape)
     return DadosMetodo(nome=nome, matriz=matriz, skus=skus, features=features)
 
 
@@ -235,7 +216,7 @@ def top_features_esparso(
     dados: DadosMetodo,
     idx_produto: int,
     n: int,
-) -> list[tuple[str, float]]:
+) -> list[tuple[str | list[str], float]]:
     """Top features para BoW ou TF-IDF: maiores pesos na linha do produto."""
     assert dados.features is not None
     vetor = dados.matriz[idx_produto]
@@ -264,7 +245,7 @@ def top_features_w2v(
         vizinhos = modelo.wv.similar_by_vector(embedding, topn=n)
         return [(token, round(float(score), 4)) for token, score in vizinhos]
     except Exception as exc:
-        log.warning("Erro ao calcular vizinhos W2V: %s", exc)
+        logger.warning("Erro ao calcular vizinhos W2V: %s", exc)
         return []
 
 
@@ -273,7 +254,7 @@ def obter_top_features(
     idx_produto: int,
     n: int,
     modelo_w2v=None,
-) -> list[tuple[str, float]]:
+) -> list[tuple[str | list[str], float]] | list[tuple[str, float]]:
     """Despacha para a estratégia correta de acordo com o método."""
     if dados.features is not None:
         return top_features_esparso(dados, idx_produto, n)
@@ -499,7 +480,7 @@ def salvar_figura(fig: Figure, caminho: Path | None) -> None:
         return
     caminho.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(caminho, dpi=DPI, bbox_inches="tight")
-    log.info("Figura salva: %s", caminho)
+    logger.info("Figura salva: %s", caminho)
 
 
 # ---------------------------------------------------------------------------
@@ -518,7 +499,7 @@ def carregar_todos_metodos() -> tuple[list[DadosMetodo], object]:
 
     metodos = [m for m in [bow, tfidf, w2v] if m is not None]
     if not metodos:
-        log.error(
+        logger.error(
             "Nenhum método disponível. Execute os scripts de vetorização primeiro."
         )
         sys.exit(1)
@@ -533,12 +514,12 @@ def alinhar_metodos(
     """Alinha todos os métodos ao conjunto master de SKUs."""
     alinhados = [alinhar_ao_corpus_master(m, skus_master) for m in metodos]
     skus_finais = skus_comuns(alinhados)
-    log.info("%d SKUs comuns entre todos os métodos disponíveis.", len(skus_finais))
+    logger.info("%d SKUs comuns entre todos os métodos disponíveis.", len(skus_finais))
     return [alinhar_ao_corpus_master(m, skus_finais) for m in alinhados]
 
 
 def main() -> None:
-    log.info("Carregando artefatos…")
+    logger.info("Carregando artefatos…")
     metodos, modelo_w2v = carregar_todos_metodos()
 
     skus_master = (
@@ -549,16 +530,16 @@ def main() -> None:
     metadata = carregar_metadata_produtos(PRODUCTS_CSV) if PRODUCTS_CSV.exists() else {}
     indices_amostra = selecionar_amostra(metodos[0].skus, N_AMOSTRAS, SEED_AMOSTRA)
 
-    log.info("Gerando Figura 1 — top features por produto…")
+    logger.info("Gerando Figura 1 — top features por produto…")
     fig1 = plotar_top_features(metodos, indices_amostra, metadata, modelo_w2v)
     salvar_figura(fig1, SALVAR_FIGURA_1)
 
-    log.info("Gerando Figura 2 — heatmap de similaridade por categoria…")
+    logger.info("Gerando Figura 2 — heatmap de similaridade por categoria…")
     fig2 = plotar_heatmaps_categorias(metodos, metadata)
     salvar_figura(fig2, SALVAR_FIGURA_2)
 
     plt.show()
-    log.info("Visualização concluída.")
+    logger.info("Visualização concluída.")
 
 
 if __name__ == "__main__":

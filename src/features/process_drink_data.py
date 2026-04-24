@@ -19,20 +19,17 @@ Dependências: somente biblioteca padrão do Python (csv, json, html, pathlib, r
 import csv
 import html
 import json
-import logging
 import re
-import sys
 from pathlib import Path
 from typing import Any
-from src.config import DATA_DIR
+from src import logger
+from src.config import RAW_DIR, PROCESSED_DIR
 
 # ---------------------------------------------------------------------------
 # Configurações
 # ---------------------------------------------------------------------------
 
-EXTRACTED_PRODUCTS_DIR = DATA_DIR / "raw" / "extracted_products"
-PROCESSED_DIR = DATA_DIR / "processed"
-
+EXTRACTED_PRODUCTS_DIR = RAW_DIR / "extracted_products"
 PRODUCTS_CSV = PROCESSED_DIR / "products.csv"
 REVIEWS_CSV = PROCESSED_DIR / "reviews.csv"
 
@@ -74,18 +71,6 @@ REVIEWS_FIELDNAMES: list[str] = [
     "author",
     "review_body",
 ]
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -155,7 +140,7 @@ def transformar_produto(raw: dict, categoria: str) -> dict:
 
     # brand (opcional — incluído como string vazia quando ausente)
     brand_obj = raw.get("brand")
-    brand_raw = brand_obj.get("name") if isinstance(brand_obj, dict) else None
+    brand_raw = str(brand_obj.get("name")) if isinstance(brand_obj, dict) else ""
     brand: str = limpar_texto(brand_raw) if brand_raw else ""
 
     # description
@@ -168,7 +153,7 @@ def transformar_produto(raw: dict, categoria: str) -> dict:
 
     url: str = exigir_campo(offers, "url", str, f"{ctx} > offers")
 
-    price_raw = offers.get("price")
+    price_raw = str(offers.get("price"))
     if price_raw is None:
         raise ErroValidacao(f"[{ctx}] Campo 'offers.price' ausente.")
     try:
@@ -191,8 +176,8 @@ def transformar_produto(raw: dict, categoria: str) -> dict:
     # aggregateRating (opcional)
     agg = raw.get("aggregateRating")
     if isinstance(agg, dict):
-        rating_value_raw = agg.get("ratingValue")
-        review_count_raw = agg.get("reviewCount")
+        rating_value_raw = str(agg.get("ratingValue"))
+        review_count_raw = str(agg.get("reviewCount"))
         try:
             rating_value: float | None = (
                 round(float(rating_value_raw), 2)
@@ -263,7 +248,7 @@ def transformar_reviews(raw: dict) -> list[dict]:
             review_body: str = limpar_texto_review(body_raw)
 
         except ErroValidacao as exc:
-            log.warning("Review ignorada — %s", exc)
+            logger.warning("Review ignorada — %s", exc)
             continue
 
         reviews_limpos.append(
@@ -377,11 +362,11 @@ def processar_arquivo(
 
     Retorna (produtos_gravados, reviews_gravadas).
     """
-    log.info("Processando '%s' (categoria: %s)", caminho_jsonl.name, categoria)
+    logger.info("Processando '%s' (categoria: %s)", caminho_jsonl.name, categoria)
 
     # Etapa 1: carga
     raws = carregar_jsonl(caminho_jsonl)
-    log.info("  %d linha(s) carregada(s).", len(raws))
+    logger.info("  %d linha(s) carregada(s).", len(raws))
 
     # Etapas 2 e 3: transformação e validação acumulando os dois lotes
     products_batch: list[dict] = []
@@ -394,7 +379,7 @@ def processar_arquivo(
 
         # Deduplicação dentro do arquivo
         if sku in skus_vistos:
-            log.warning("  SKU duplicado ignorado dentro do arquivo: %s", sku)
+            logger.warning("  SKU duplicado ignorado dentro do arquivo: %s", sku)
             continue
         skus_vistos.add(sku)
 
@@ -402,7 +387,7 @@ def processar_arquivo(
         try:
             produto = transformar_produto(raw, categoria)
         except ErroValidacao as exc:
-            log.error("  Produto ignorado — %s", exc)
+            logger.error("  Produto ignorado — %s", exc)
             continue
 
         # Transformação das reviews (falhas individuais já logadas internamente)
@@ -415,7 +400,7 @@ def processar_arquivo(
         reviews_batch.extend(reviews)
 
     if not products_batch:
-        log.warning(
+        logger.warning(
             "  Nenhum produto válido em '%s'. Arquivo ignorado.", caminho_jsonl.name
         )
         return 0, 0
@@ -425,7 +410,7 @@ def processar_arquivo(
     gravar_csv(PRODUCTS_CSV, PRODUCTS_FIELDNAMES, products_batch, modo_append)
     gravar_csv(REVIEWS_CSV, REVIEWS_FIELDNAMES, reviews_batch, modo_append)
 
-    log.info(
+    logger.info(
         "  Gravados: %d produto(s), %d review(s).",
         len(products_batch),
         len(reviews_batch),
@@ -450,13 +435,13 @@ def main() -> None:
         caminho = EXTRACTED_PRODUCTS_DIR / f"{categoria}_products.jsonl"
 
         if not caminho.exists():
-            log.warning("Arquivo não encontrado, pulando: '%s'", caminho)
+            logger.warning("Arquivo não encontrado, pulando: '%s'", caminho)
             continue
 
         try:
             produtos, reviews = processar_arquivo(caminho, categoria, primeiro_arquivo)
         except (ValueError, OSError) as exc:
-            log.error(
+            logger.error(
                 "Falha crítica ao processar '%s': %s — arquivo ignorado.",
                 caminho.name,
                 exc,
@@ -469,15 +454,15 @@ def main() -> None:
             total_produtos += produtos
             total_reviews += reviews
 
-    log.info(
+    logger.info(
         "Pipeline concluído: %d arquivo(s), %d produto(s), %d review(s).",
         arquivos_processados,
         total_produtos,
         total_reviews,
     )
     if total_produtos > 0:
-        log.info("  → %s", PRODUCTS_CSV)
-        log.info("  → %s", REVIEWS_CSV)
+        logger.info("  → %s", PRODUCTS_CSV)
+        logger.info("  → %s", REVIEWS_CSV)
 
 
 if __name__ == "__main__":

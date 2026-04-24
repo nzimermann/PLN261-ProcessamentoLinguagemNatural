@@ -15,10 +15,10 @@ Uso:
 """
 
 import json
-import logging
 import sys
 from pathlib import Path
-from src.config import DATA_DIR
+from src import logger
+from src.config import CORPUS_DIR, VECTORS_BOW
 
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz
@@ -28,13 +28,10 @@ from sklearn.feature_extraction.text import CountVectorizer
 # Configuração — ajuste aqui para experimentar diferentes abordagens
 # ---------------------------------------------------------------------------
 
-CORPUS_DIR = DATA_DIR / "processed" / "corpus"
-VECTORS_BOW_DIR = DATA_DIR / "processed" / "vectors" / "bow"
-
 CORPUS_JSONL = CORPUS_DIR / "corpus_bow_tfidf.jsonl"
-OUTPUT_MATRIX = VECTORS_BOW_DIR / "bow_matrix.npz"
-OUTPUT_SKUS = VECTORS_BOW_DIR / "bow_skus.json"
-OUTPUT_FEATURES = VECTORS_BOW_DIR / "bow_features.json"
+OUTPUT_MATRIX = VECTORS_BOW / "bow_matrix.npz"
+OUTPUT_SKUS = VECTORS_BOW / "bow_skus.json"
+OUTPUT_FEATURES = VECTORS_BOW / "bow_features.json"
 
 # Campos do corpus a incluir na representação do documento.
 # Ambos podem ser ativados simultaneamente — os termos serão concatenados
@@ -67,18 +64,6 @@ N_TOP_FEATURES: int = 10
 # Seed para fixar a amostra entre execuções — os mesmos produtos
 # são sempre exibidos, permitindo comparar resultados entre ajustes
 SEED_AMOSTRA: int = 42
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +149,7 @@ def montar_documentos(
         termos = extrair_termos(registro)
 
         if not termos:
-            log.warning("SKU %s sem termos após extração — ignorado.", sku)
+            logger.warning("SKU %s sem termos após extração — ignorado.", sku)
             continue
 
         skus.append(sku)
@@ -305,13 +290,15 @@ def imprimir_features_globais(
 
 def salvar_matriz(matriz: csr_matrix, caminho: Path) -> None:
     save_npz(str(caminho), matriz)
-    log.info("Matriz salva: %s  (shape %s, nnz %d)", caminho, matriz.shape, matriz.nnz)
+    logger.info(
+        "Matriz salva: %s  (shape %s, nnz %d)", caminho, matriz.shape, matriz.nnz
+    )
 
 
 def salvar_json(dados: list, caminho: Path, descricao: str) -> None:
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False)
-    log.info("%s salvo: %s  (%d entradas)", descricao, caminho, len(dados))
+    logger.info("%s salvo: %s  (%d entradas)", descricao, caminho, len(dados))
 
 
 # ---------------------------------------------------------------------------
@@ -425,8 +412,8 @@ def main() -> None:
     validar_configuracao()
 
     if not CORPUS_JSONL.exists():
-        log.error("Corpus não encontrado: '%s'", CORPUS_JSONL)
-        log.error("Execute preparar_corpus.py antes desta etapa.")
+        logger.error("Corpus não encontrado: '%s'", CORPUS_JSONL)
+        logger.error("Execute preparar_corpus.py antes desta etapa.")
         sys.exit(1)
 
     skus, documentos = secao_carregamento()

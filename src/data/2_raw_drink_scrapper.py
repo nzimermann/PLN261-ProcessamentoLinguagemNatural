@@ -13,10 +13,10 @@ Dependências:
 """
 
 import json
-import logging
 import time
 from pathlib import Path
-from src.config import DATA_DIR
+from src import logger
+from src.config import RAW_DIR
 
 import requests
 from bs4 import BeautifulSoup
@@ -25,8 +25,8 @@ from bs4 import BeautifulSoup
 # Configurações
 # ---------------------------------------------------------------------------
 
-PRODUCT_LINKS_DIR = DATA_DIR / "raw" / "product_links"
-EXTRACTED_PRODUCTS_DIR = DATA_DIR / "raw" / "extracted_products"
+PRODUCT_LINKS_DIR = RAW_DIR / "product_links"
+EXTRACTED_PRODUCTS_DIR = RAW_DIR / "extracted_products"
 
 # Intervalo entre requisições (segundos)
 REQUEST_DELAY = 1.0
@@ -43,17 +43,6 @@ HEADERS = {
     "Accept-Language": "pt-BR,pt;q=0.9",
 }
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-)
-log = logging.getLogger(__name__)
-
 
 # ---------------------------------------------------------------------------
 # Funções auxiliares
@@ -64,7 +53,7 @@ def listar_arquivos_de_links(diretorio: Path) -> list[Path]:
     """Retorna todos os arquivos *_links.json no diretório informado, ordenados."""
     arquivos = sorted(diretorio.glob("*_links.json"))
     if not arquivos:
-        log.warning("Nenhum arquivo *_links.json encontrado em '%s'.", diretorio)
+        logger.warning("Nenhum arquivo *_links.json encontrado em '%s'.", diretorio)
     return arquivos
 
 
@@ -94,7 +83,7 @@ def fazer_requisicao(url: str, sessao: requests.Session) -> requests.Response | 
         resposta.raise_for_status()
         return resposta
     except requests.RequestException as exc:
-        log.warning("Falha ao acessar %s: %s", url, exc)
+        logger.warning("Falha ao acessar %s: %s", url, exc)
         return None
 
 
@@ -109,7 +98,7 @@ def extrair_ldjson(soup: BeautifulSoup) -> dict | None:
     try:
         return json.loads(tag.string)
     except json.JSONDecodeError as exc:
-        log.warning("JSON inválido no ld+json: %s", exc)
+        logger.warning("JSON inválido no ld+json: %s", exc)
         return None
 
 
@@ -141,13 +130,13 @@ def processar_categoria(
 
     duplicatas = len(links) - len(links_unicos)
     if duplicatas:
-        log.info(
+        logger.info(
             "  %d link(s) duplicado(s) removido(s) de '%s'.",
             duplicatas,
             arquivo_links.name,
         )
 
-    log.info(
+    logger.info(
         "Processando '%s': %d link(s) únicos → '%s'",
         arquivo_links.name,
         len(links_unicos),
@@ -159,7 +148,7 @@ def processar_categoria(
 
     with open(caminho_saida, "w", encoding="utf-8") as f_saida:
         for i, url in enumerate(links_unicos, start=1):
-            log.info("  [%d/%d] %s", i, len(links_unicos), url)
+            logger.info("  [%d/%d] %s", i, len(links_unicos), url)
 
             resposta = fazer_requisicao(url, sessao)
             if resposta is None:
@@ -171,7 +160,7 @@ def processar_categoria(
             dados = extrair_ldjson(soup)
 
             if dados is None:
-                log.warning("  ld+json não encontrado em: %s", url)
+                logger.warning("  ld+json não encontrado em: %s", url)
                 falhas += 1
                 time.sleep(REQUEST_DELAY)
                 continue
@@ -181,7 +170,7 @@ def processar_categoria(
 
             time.sleep(REQUEST_DELAY)
 
-    log.info(
+    logger.info(
         "  Concluído: %d extraído(s), %d falha(s). Salvo em '%s'.",
         extraidos,
         falhas,
@@ -201,7 +190,7 @@ def main() -> None:
     arquivos = listar_arquivos_de_links(PRODUCT_LINKS_DIR)
 
     if not arquivos:
-        log.error(
+        logger.error(
             "Nenhum arquivo de links encontrado. "
             "Verifique se o diretório '%s' existe e contém arquivos *_links.json.",
             PRODUCT_LINKS_DIR,
@@ -212,7 +201,7 @@ def main() -> None:
         processar_categoria(arquivo, EXTRACTED_PRODUCTS_DIR, sessao)
         time.sleep(REQUEST_DELAY)
 
-    log.info("Extração concluída para %d categoria(s).", len(arquivos))
+    logger.info("Extração concluída para %d categoria(s).", len(arquivos))
 
 
 if __name__ == "__main__":

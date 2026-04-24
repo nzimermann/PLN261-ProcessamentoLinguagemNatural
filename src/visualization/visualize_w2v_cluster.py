@@ -10,7 +10,7 @@ Reduz a matriz de embeddings para 2D (UMAP ou t-SNE como fallback) e
 plota cada produto como um ponto colorido por categoria de bebida.
 
 Estratégia de categorização (em ordem de preferência):
-    1. Campo de categoria no corpus_w2v.jsonl  (ex.: "categoria": "Gin")
+    1. Campo de categoria no corpus_w2v.jsonl (ex.: "categoria": "Gin")
     2. Inferência por centroide — calcula a similaridade de cosseno entre
        o vetor do produto e o centroide de cada categoria no espaço W2V.
 
@@ -23,10 +23,9 @@ Uso:
 """
 
 import json
-import logging
 import sys
-from pathlib import Path
-from src.config import DATA_DIR
+from src import logger
+from src.config import REPORTS_DIR, CORPUS_DIR, VECTORS_W2V
 
 import numpy as np
 from gensim.models import Word2Vec
@@ -35,13 +34,12 @@ from gensim.models import Word2Vec
 # Configuração
 # ---------------------------------------------------------------------------
 
-VECTORS_DIR = DATA_DIR / "processed" / "vectors" / "w2v"
-CORPUS_JSONL = DATA_DIR / "processed" / "corpus" / "corpus_w2v.jsonl"
+CORPUS_JSONL = CORPUS_DIR / "corpus_w2v.jsonl"
 
-MATRIX_PATH = VECTORS_DIR / "w2v_matrix.npy"
-SKUS_PATH = VECTORS_DIR / "w2v_skus.json"
-MODEL_PATH = VECTORS_DIR / "word2vec.model"
-OUTPUT_PNG = VECTORS_DIR / "clusters_w2v.png"
+MATRIX_PATH = VECTORS_W2V / "w2v_matrix.npy"
+SKUS_PATH = VECTORS_W2V / "w2v_skus.json"
+MODEL_PATH = VECTORS_W2V / "word2vec.model"
+OUTPUT_PNG = REPORTS_DIR / "clusters_w2v.png"
 
 # Campo buscado no corpus_w2v.jsonl para obter a categoria do produto.
 # Ajuste se o seu corpus usar um nome diferente (ex.: "tipo", "classe").
@@ -127,18 +125,6 @@ PALETA: list[str] = [
 
 COR_DESCONHECIDA: str = "#CCCCCC"  # Produtos não categorizados
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
-
 
 # ---------------------------------------------------------------------------
 # Carregamento dos artefatos
@@ -149,24 +135,24 @@ def carregar_artefatos() -> tuple[np.ndarray, list[str], Word2Vec]:
     """Carrega a matriz de embeddings, os SKUs e o modelo Word2Vec."""
     for caminho in [MATRIX_PATH, SKUS_PATH, MODEL_PATH]:
         if not caminho.exists():
-            log.error("Arquivo não encontrado: '%s'", caminho)
-            log.error(
+            logger.error("Arquivo não encontrado: '%s'", caminho)
+            logger.error(
                 "Execute vetorizar_w2v.py antes desta etapa para gerar os artefatos."
             )
             sys.exit(1)
 
     matriz = np.load(str(MATRIX_PATH))
-    log.info("Matriz carregada: shape=%s  dtype=%s", matriz.shape, matriz.dtype)
+    logger.info("Matriz carregada: shape=%s  dtype=%s", matriz.shape, matriz.dtype)
 
     with open(SKUS_PATH, encoding="utf-8") as f:
         skus: list[str] = json.load(f)
-    log.info("SKUs carregados: %d entradas", len(skus))
+    logger.info("SKUs carregados: %d entradas", len(skus))
 
     modelo = Word2Vec.load(str(MODEL_PATH))
-    log.info("Modelo W2V carregado: %d tokens no vocabulário", len(modelo.wv))
+    logger.info("Modelo W2V carregado: %d tokens no vocabulário", len(modelo.wv))
 
     if len(skus) != matriz.shape[0]:
-        log.error(
+        logger.error(
             "Inconsistência: %d SKUs mas %d linhas na matriz.",
             len(skus),
             matriz.shape[0],
@@ -187,7 +173,7 @@ def tentar_categorias_do_corpus(skus: list[str]) -> dict[str, str] | None:
     Retorna None se o corpus não existir ou não contiver o campo esperado.
     """
     if not CORPUS_JSONL.exists():
-        log.info(
+        logger.info(
             "Corpus '%s' não encontrado — pulando leitura de categorias.",
             CORPUS_JSONL,
         )
@@ -214,14 +200,14 @@ def tentar_categorias_do_corpus(skus: list[str]) -> dict[str, str] | None:
                 mapa[sku] = str(categoria)
 
     if not encontrou_campo:
-        log.info(
+        logger.info(
             "Campo '%s' não encontrado no corpus — usando inferência por centroide.",
             CAMPO_CATEGORIA,
         )
         return None
 
     cobertura = sum(1 for sku in skus if sku in mapa)
-    log.info(
+    logger.info(
         "Categorias do corpus: %d/%d SKUs cobertos (campo '%s').",
         cobertura,
         len(skus),
@@ -278,13 +264,13 @@ def inferir_categorias_por_centroide(
         if centroide is not None:
             centroides[nome_cat] = centroide
         else:
-            log.warning(
+            logger.warning(
                 "Categoria '%s' sem termos no vocabulário W2V — ignorada na inferência.",
                 nome_cat,
             )
 
     if not centroides:
-        log.error("Nenhuma categoria pôde ser construída com o vocabulário atual.")
+        logger.error("Nenhuma categoria pôde ser construída com o vocabulário atual.")
         sys.exit(1)
 
     nomes_cats = list(centroides.keys())
@@ -308,12 +294,12 @@ def inferir_categorias_por_centroide(
 
     mapa: dict[str, str] = {}
     for i, sku in enumerate(skus):
-        mapa[sku] = nomes_cats[indices_melhor[i]]
+        mapa[sku] = str(nomes_cats[indices_melhor[i]])
 
     contagem = {}
     for cat in mapa.values():
         contagem[cat] = contagem.get(cat, 0) + 1
-    log.info("Distribuição inferida: %s", contagem)
+    logger.info("Distribuição inferida: %s", contagem)
 
     return mapa
 
@@ -334,7 +320,7 @@ def reduzir_para_2d(matriz: np.ndarray) -> np.ndarray:
         try:
             import umap  # noqa: PLC0415
 
-            log.info(
+            logger.info(
                 "Reduzindo com UMAP (n_neighbors=%d, min_dist=%.2f, metric=%s)…",
                 UMAP_N_NEIGHBORS,
                 UMAP_MIN_DIST,
@@ -350,12 +336,12 @@ def reduzir_para_2d(matriz: np.ndarray) -> np.ndarray:
             return np.asarray(reducer.fit_transform(matriz))
 
         except ImportError:
-            log.warning(
+            logger.warning(
                 "umap-learn não instalado. Usando t-SNE como fallback. "
                 "Para instalar: pip install umap-learn"
             )
 
-    log.info(
+    logger.info(
         "Reduzindo com t-SNE (perplexity=%d, max_iter=%d, metric=%s)…",
         TSNE_PERPLEXITY,
         TSNE_MAX_ITER,
@@ -395,7 +381,6 @@ def plotar_clusters(
     e informações de contexto (método de redução, número de produtos).
     """
     import matplotlib.pyplot as plt
-    import matplotlib.patheffects as pe
     from matplotlib.lines import Line2D
 
     # Constrói o mapeamento categoria → cor a partir das categorias presentes
@@ -528,14 +513,13 @@ def plotar_clusters(
 
     plt.tight_layout(rect=(0, 0.03, 1, 1))
 
-    VECTORS_DIR.mkdir(parents=True, exist_ok=True)
     fig.savefig(
         str(OUTPUT_PNG),
         dpi=EXPORT_DPI,
         bbox_inches="tight",
         facecolor=fig.get_facecolor(),
     )
-    log.info("Gráfico salvo: %s  (%d DPI)", OUTPUT_PNG, EXPORT_DPI)
+    logger.info("Gráfico salvo: %s  (%d DPI)", OUTPUT_PNG, EXPORT_DPI)
 
     plt.show()
 

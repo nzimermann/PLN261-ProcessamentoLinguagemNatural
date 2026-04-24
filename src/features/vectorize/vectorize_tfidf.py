@@ -19,10 +19,10 @@ Uso:
 """
 
 import json
-import logging
 import sys
 from pathlib import Path
-from src.config import DATA_DIR
+from src import logger
+from src.config import CORPUS_DIR, VECTORS_TFIDF
 
 import numpy as np
 from scipy.sparse import csr_matrix, save_npz
@@ -32,13 +32,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 # Configuração — ajuste aqui para experimentar diferentes abordagens
 # ---------------------------------------------------------------------------
 
-CORPUS_DIR = DATA_DIR / "processed" / "corpus"
-VECTORS_TFIDF_DIR = DATA_DIR / "processed" / "vectors" / "tfidf"
-
 CORPUS_JSONL = CORPUS_DIR / "corpus_bow_tfidf.jsonl"
-OUTPUT_MATRIX = VECTORS_TFIDF_DIR / "tfidf_matrix.npz"
-OUTPUT_SKUS = VECTORS_TFIDF_DIR / "tfidf_skus.json"
-OUTPUT_FEATURES = VECTORS_TFIDF_DIR / "tfidf_features.json"
+OUTPUT_MATRIX = VECTORS_TFIDF / "tfidf_matrix.npz"
+OUTPUT_SKUS = VECTORS_TFIDF / "tfidf_skus.json"
+OUTPUT_FEATURES = VECTORS_TFIDF / "tfidf_features.json"
 
 # Forma dos termos usada na vetorização:
 #   USAR_LEMMAS = True,  USAR_TEXTOS = False → formas lematizadas
@@ -82,18 +79,6 @@ N_TOP_FEATURES: int = 10
 # Seed para fixar a amostra entre execuções — os mesmos produtos
 # são sempre exibidos, permitindo comparar resultados entre ajustes
 SEED_AMOSTRA: int = 42
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +166,7 @@ def montar_documentos(registros: list[dict]) -> tuple[list[str], list[str]]:
         termos = extrair_termos(registro)
 
         if not termos:
-            log.warning("SKU %s sem termos após extração — ignorado.", sku)
+            logger.warning("SKU %s sem termos após extração — ignorado.", sku)
             continue
 
         skus.append(sku)
@@ -369,13 +354,15 @@ def imprimir_diagnostico_idf(
 
 def salvar_matriz(matriz: csr_matrix, caminho: Path) -> None:
     save_npz(str(caminho), matriz)
-    log.info("Matriz salva: %s  (shape %s, nnz %d)", caminho, matriz.shape, matriz.nnz)
+    logger.info(
+        "Matriz salva: %s  (shape %s, nnz %d)", caminho, matriz.shape, matriz.nnz
+    )
 
 
 def salvar_json(dados: list, caminho: Path, descricao: str) -> None:
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False)
-    log.info("%s salvo: %s  (%d entradas)", descricao, caminho, len(dados))
+    logger.info("%s salvo: %s  (%d entradas)", descricao, caminho, len(dados))
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +458,7 @@ def secao_persistencia(
     print("SEÇÃO 7 — PERSISTÊNCIA")
     print("=" * 60)
 
-    VECTORS_TFIDF_DIR.mkdir(parents=True, exist_ok=True)
+    VECTORS_TFIDF.mkdir(parents=True, exist_ok=True)
     salvar_matriz(matriz, OUTPUT_MATRIX)
     salvar_json(skus, OUTPUT_SKUS, "SKUs")
     salvar_json(
@@ -491,8 +478,8 @@ def main() -> None:
     validar_configuracao()
 
     if not CORPUS_JSONL.exists():
-        log.error("Corpus não encontrado: '%s'", CORPUS_JSONL)
-        log.error("Execute preparar_corpus.py antes desta etapa.")
+        logger.error("Corpus não encontrado: '%s'", CORPUS_JSONL)
+        logger.error("Execute preparar_corpus.py antes desta etapa.")
         sys.exit(1)
 
     skus, documentos = secao_carregamento()

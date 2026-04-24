@@ -12,20 +12,19 @@ Uso:
 """
 
 import json
-import logging
 import sys
 from pathlib import Path
-from src.config import DATA_DIR
+from src import logger
+from src.config import PROCESSED_DIR, TOKENS_DIR, CORPUS_DIR
 
 # ---------------------------------------------------------------------------
 # Configuração
 # ---------------------------------------------------------------------------
 
-PROCESSED_DIR = DATA_DIR / "processed"
-TOKENS_JSONL = PROCESSED_DIR / "tokens" / "tokens_products.jsonl"
-CORPUS_SKUS_JSON = PROCESSED_DIR / "corpus" / "corpus_skus.json"
-CORPUS_BOW_TFIDF_JSONL = PROCESSED_DIR / "corpus" / "corpus_bow_tfidf.jsonl"
-CORPUS_W2V_JSONL = PROCESSED_DIR / "corpus" / "corpus_w2v.jsonl"
+TOKENS_JSONL = TOKENS_DIR / "tokens_products.jsonl"
+CORPUS_SKUS_JSON = CORPUS_DIR / "corpus_skus.json"
+CORPUS_BOW_TFIDF_JSONL = CORPUS_DIR / "corpus_bow_tfidf.jsonl"
+CORPUS_W2V_JSONL = CORPUS_DIR / "corpus_w2v.jsonl"
 
 # Classes gramaticais com conteúdo semântico relevante para o domínio
 POS_SEMANTICOS: frozenset[str] = frozenset({"NOUN", "VERB", "ADV"})
@@ -78,18 +77,6 @@ STOPLIST_DOMINIO: frozenset[str] = frozenset(
         "bebida",
     }
 )
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -272,7 +259,7 @@ def agregar_corpus_w2v_por_sku(registros: list[dict]) -> dict[str, list[str]]:
 
     vazios = [sku for sku, termos in agregado.items() if not termos]
     for sku in vazios:
-        log.warning("SKU %s sem termos (w2v) — será omitido do corpus.", sku)
+        logger.warning("SKU %s sem termos (w2v) — será omitido do corpus.", sku)
 
     return {sku: t for sku, t in agregado.items() if t}
 
@@ -298,7 +285,7 @@ def agregar_corpus_bow_tfidf_por_sku(
 
     vazios = [sku for sku, pares in agregado.items() if not pares]
     for sku in vazios:
-        log.warning("SKU %s sem pares (bow/tfidf) — será omitido do corpus.", sku)
+        logger.warning("SKU %s sem pares (bow/tfidf) — será omitido do corpus.", sku)
 
     return {sku: p for sku, p in agregado.items() if p}
 
@@ -322,19 +309,19 @@ def validar_consistencia_de_skus(
     apenas_w2v = skus_w2v - skus_bow_tfidf
 
     if apenas_bow:
-        log.warning(
+        logger.warning(
             "%d SKU(s) presentes em bow/tfidf mas ausentes em w2v: %s",
             len(apenas_bow),
             sorted(apenas_bow)[:10],
         )
     if apenas_w2v:
-        log.warning(
+        logger.warning(
             "%d SKU(s) presentes em w2v mas ausentes em bow/tfidf: %s",
             len(apenas_w2v),
             sorted(apenas_w2v)[:10],
         )
     if not apenas_bow and not apenas_w2v:
-        log.info("  Consistência validada: os dois corpus cobrem os mesmos SKUs.")
+        logger.info("  Consistência validada: os dois corpus cobrem os mesmos SKUs.")
 
 
 # ---------------------------------------------------------------------------
@@ -347,7 +334,7 @@ def salvar_skus(skus: list[str], caminho: Path) -> None:
     caminho.parent.mkdir(parents=True, exist_ok=True)
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(skus, f, ensure_ascii=False)
-    log.info("corpus_skus.json salvo: %d SKUs → %s", len(skus), caminho)
+    logger.info("corpus_skus.json salvo: %d SKUs → %s", len(skus), caminho)
 
 
 def _gravar_jsonl(registros_iter, caminho: Path) -> int:
@@ -373,7 +360,7 @@ def salvar_corpus_w2v_jsonl(
         if sku in agregado
     )
     gravados = _gravar_jsonl(registros, caminho)
-    log.info("%s salvo: %d registros → %s", caminho.name, gravados, caminho)
+    logger.info("%s salvo: %d registros → %s", caminho.name, gravados, caminho)
 
 
 def salvar_corpus_bow_tfidf_jsonl(
@@ -392,7 +379,7 @@ def salvar_corpus_bow_tfidf_jsonl(
         if sku in agregado
     )
     gravados = _gravar_jsonl(registros, caminho)
-    log.info("%s salvo: %d registros → %s", caminho.name, gravados, caminho)
+    logger.info("%s salvo: %d registros → %s", caminho.name, gravados, caminho)
 
 
 # ---------------------------------------------------------------------------
@@ -416,10 +403,10 @@ def logar_estatisticas(nome: str, agregado: dict) -> None:
     """
     contagens = [_comprimento_entrada(v) for v in agregado.values()]
     if not contagens:
-        log.warning("%s: corpus vazio.", nome)
+        logger.warning("%s: corpus vazio.", nome)
         return
     amostra_sku = max(agregado, key=lambda s: _comprimento_entrada(agregado[s]))
-    log.info(
+    logger.info(
         "  %s — SKUs: %d | itens/doc: mín %d · méd %.0f · máx %d",
         nome,
         len(contagens),
@@ -428,7 +415,7 @@ def logar_estatisticas(nome: str, agregado: dict) -> None:
         max(contagens),
     )
     amostra = agregado[amostra_sku][:6]
-    log.info(
+    logger.info(
         "  %s — SKU mais rico: %s (%d itens) | amostra: %s",
         nome,
         amostra_sku,
@@ -454,32 +441,34 @@ def derivar_skus_canonicos(
     skus_comuns = sorted(set(bow_tfidf.keys()) & set(w2v.keys()))
     descartados = (len(bow_tfidf) + len(w2v)) // 2 - len(skus_comuns)
     if descartados > 0:
-        log.warning("%d SKU(s) descartados por ausência em um dos corpus.", descartados)
+        logger.warning(
+            "%d SKU(s) descartados por ausência em um dos corpus.", descartados
+        )
     return skus_comuns
 
 
 def main() -> None:
     if not TOKENS_JSONL.exists():
-        log.error("Arquivo de entrada não encontrado: '%s'", TOKENS_JSONL)
+        logger.error("Arquivo de entrada não encontrado: '%s'", TOKENS_JSONL)
         sys.exit(1)
 
-    log.info("Carregando '%s'…", TOKENS_JSONL.name)
+    logger.info("Carregando '%s'…", TOKENS_JSONL.name)
     registros = carregar_tokens(TOKENS_JSONL)
-    log.info("  %d registros carregados.", len(registros))
+    logger.info("  %d registros carregados.", len(registros))
 
-    log.info("Agregando corpus BoW/TF-IDF (filtros pesados · lemma + text)…")
+    logger.info("Agregando corpus BoW/TF-IDF (filtros pesados · lemma + text)…")
     corpus_bow_tfidf = agregar_corpus_bow_tfidf_por_sku(registros)
     logar_estatisticas("bow_tfidf", corpus_bow_tfidf)
 
-    log.info("Agregando corpus Word2Vec (filtros leves · text · ordem)…")
+    logger.info("Agregando corpus Word2Vec (filtros leves · text · ordem)…")
     corpus_w2v = agregar_corpus_w2v_por_sku(registros)
     logar_estatisticas("w2v", corpus_w2v)
 
-    log.info("Validando consistência entre corpus…")
+    logger.info("Validando consistência entre corpus…")
     validar_consistencia_de_skus(set(corpus_bow_tfidf), set(corpus_w2v))
 
     skus_canonicos = derivar_skus_canonicos(corpus_bow_tfidf, corpus_w2v)
-    log.info("  %d SKUs na lista canônica.", len(skus_canonicos))
+    logger.info("  %d SKUs na lista canônica.", len(skus_canonicos))
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     salvar_skus(skus_canonicos, CORPUS_SKUS_JSON)
@@ -488,7 +477,7 @@ def main() -> None:
     )
     salvar_corpus_w2v_jsonl(corpus_w2v, skus_canonicos, CORPUS_W2V_JSONL)
 
-    log.info("Preparo de corpus concluído.")
+    logger.info("Preparo de corpus concluído.")
 
 
 if __name__ == "__main__":

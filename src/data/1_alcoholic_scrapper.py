@@ -1,8 +1,8 @@
 import json
 import time
-import logging
 from pathlib import Path
-from src.config import DATA_DIR
+from src import logger
+from src.config import RAW_DIR
 
 import requests
 from bs4 import BeautifulSoup
@@ -30,7 +30,7 @@ CATEGORIAS: list[str] = [
 ]
 
 MENSAGEM_SEM_PRODUTOS = "não há produtos disponíveis nesta categoria"
-OUTPUT_DIR = DATA_DIR / "raw" / "product_links"
+OUTPUT_DIR = RAW_DIR / "product_links"
 REQUEST_DELAY = 1.0
 REQUEST_TIMEOUT = 15
 
@@ -42,13 +42,6 @@ HEADERS = {
     ),
     "Accept-Language": "pt-BR,pt;q=0.9",
 }
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +83,7 @@ def fazer_requisicao(url: str, sessao: requests.Session) -> requests.Response | 
         resposta.raise_for_status()
         return resposta
     except requests.RequestException as exc:
-        log.warning("Falha ao acessar %s: %s", url, exc)
+        logger.warning("Falha ao acessar %s: %s", url, exc)
         return None
 
 
@@ -141,16 +134,16 @@ def coletar_links_categoria(url_categoria: str, sessao: requests.Session) -> lis
     todos_links: list[str] = []
     pagina = 1
 
-    log.info("Iniciando categoria '%s'", slug)
+    logger.info("Iniciando categoria '%s'", slug)
 
     while pagina < 10:
         url_pagina = montar_url_pagina(url_categoria, pagina)
-        log.info("  Buscando página %d: %s", pagina, url_pagina)
+        logger.info("  Buscando página %d: %s", pagina, url_pagina)
 
         resposta = fazer_requisicao(url_pagina, sessao)
 
         if resposta is None:
-            log.warning(
+            logger.warning(
                 "  Encerrando '%s' na página %d por falha de requisição.", slug, pagina
             )
             break
@@ -158,7 +151,7 @@ def coletar_links_categoria(url_categoria: str, sessao: requests.Session) -> lis
         soup = BeautifulSoup(resposta.text, "html.parser")
 
         if pagina_sem_produtos(soup):
-            log.info(
+            logger.info(
                 "  Página %d sem produtos — paginação encerrada para '%s'.",
                 pagina,
                 slug,
@@ -170,7 +163,7 @@ def coletar_links_categoria(url_categoria: str, sessao: requests.Session) -> lis
         if not links_pagina:
             # Não encontrou cards de produto mas também não exibiu mensagem de
             # categoria vazia — encerra por precaução.
-            log.info(
+            logger.info(
                 "  Nenhum produto encontrado na página %d de '%s' — encerrando.",
                 pagina,
                 slug,
@@ -178,7 +171,7 @@ def coletar_links_categoria(url_categoria: str, sessao: requests.Session) -> lis
             break
 
         todos_links.extend(links_pagina)
-        log.info(
+        logger.info(
             "  %d produto(s) coletado(s) nesta página (total: %d).",
             len(links_pagina),
             len(todos_links),
@@ -187,7 +180,7 @@ def coletar_links_categoria(url_categoria: str, sessao: requests.Session) -> lis
         pagina += 1
         time.sleep(REQUEST_DELAY)
 
-    log.info(
+    logger.info(
         "Categoria '%s' concluída: %d produto(s) no total.", slug, len(todos_links)
     )
     return todos_links
@@ -201,7 +194,7 @@ def salvar_json(slug: str, links: list[str], diretorio: Path) -> None:
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(links, f, ensure_ascii=False, indent=4)
 
-    log.info("Salvo: %s (%d links)", caminho, len(links))
+    logger.info("Salvo: %s (%d links)", caminho, len(links))
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +212,7 @@ def main() -> None:
         salvar_json(slug, links, OUTPUT_DIR)
         time.sleep(REQUEST_DELAY)
 
-    log.info("Scraping concluído.")
+    logger.info("Scraping concluído.")
 
 
 if __name__ == "__main__":

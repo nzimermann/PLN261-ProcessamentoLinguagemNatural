@@ -22,10 +22,10 @@ Uso:
 """
 
 import json
-import logging
 import sys
 from pathlib import Path
-from src.config import DATA_DIR
+from src import logger
+from src.config import CORPUS_DIR, VECTORS_W2V
 
 import numpy as np
 from gensim.models import Word2Vec
@@ -34,13 +34,10 @@ from gensim.models import Word2Vec
 # Configuração — ajuste aqui para experimentar diferentes abordagens
 # ---------------------------------------------------------------------------
 
-CORPUS_DIR = DATA_DIR / "processed" / "corpus"
-VECTORS_W2V_DIR = DATA_DIR / "processed" / "vectors" / "w2v"
-
 CORPUS_JSONL = CORPUS_DIR / "corpus_w2v.jsonl"
-OUTPUT_MATRIX = VECTORS_W2V_DIR / "w2v_matrix.npy"
-OUTPUT_SKUS = VECTORS_W2V_DIR / "w2v_skus.json"
-OUTPUT_MODEL = VECTORS_W2V_DIR / "word2vec.model"
+OUTPUT_MATRIX = VECTORS_W2V / "w2v_matrix.npy"
+OUTPUT_SKUS = VECTORS_W2V / "w2v_skus.json"
+OUTPUT_MODEL = VECTORS_W2V / "word2vec.model"
 
 # Dimensionalidade dos vetores de palavras.
 # Valores maiores capturam mais nuance semântica, mas exigem mais dados
@@ -92,18 +89,6 @@ N_TOP_TERMOS: int = 10
 
 # Seed para fixar a amostra de produtos entre execuções
 SEED_AMOSTRA: int = 42
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
-    handlers=[logging.StreamHandler(sys.stdout)],
-)
-log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +143,7 @@ def montar_sequencias(
         tokens = extrair_sequencia(registro)
 
         if not tokens:
-            log.warning("SKU %s sem tokens — ignorado.", sku)
+            logger.warning("SKU %s sem tokens — ignorado.", sku)
             continue
 
         skus.append(sku)
@@ -247,7 +232,7 @@ def construir_matriz_embeddings(
         embedding = calcular_embedding_documento(modelo, tokens)
 
         if embedding is None:
-            log.warning(
+            logger.warning(
                 "SKU %s sem tokens no vocabulário após treinamento — ignorado.", sku
             )
             continue
@@ -415,7 +400,7 @@ def imprimir_vizinhos_semanticos(modelo: Word2Vec) -> None:
 def salvar_matriz(matriz: np.ndarray, caminho: Path) -> None:
     """Salva a matriz densa como .npy — formato nativo do numpy."""
     np.save(str(caminho), matriz)
-    log.info(
+    logger.info(
         "Matriz salva: %s  (shape %s, dtype %s)",
         caminho,
         matriz.shape,
@@ -426,14 +411,14 @@ def salvar_matriz(matriz: np.ndarray, caminho: Path) -> None:
 def salvar_skus(skus: list[str], caminho: Path) -> None:
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(skus, f, ensure_ascii=False)
-    log.info("SKUs salvos: %s  (%d entradas)", caminho, len(skus))
+    logger.info("SKUs salvos: %s  (%d entradas)", caminho, len(skus))
 
 
 def salvar_modelo(modelo: Word2Vec, caminho: Path) -> None:
     """Salva o modelo completo para reutilização ou análise posterior."""
     caminho.parent.mkdir(parents=True, exist_ok=True)
     modelo.save(str(caminho))
-    log.info("Modelo W2V salvo: %s", caminho)
+    logger.info("Modelo W2V salvo: %s", caminho)
 
 
 # ---------------------------------------------------------------------------
@@ -525,7 +510,7 @@ def secao_persistencia(
     print("SEÇÃO 7 — PERSISTÊNCIA")
     print("=" * 60)
 
-    VECTORS_W2V_DIR.mkdir(parents=True, exist_ok=True)
+    VECTORS_W2V.mkdir(parents=True, exist_ok=True)
     salvar_matriz(matriz, OUTPUT_MATRIX)
     salvar_skus(skus, OUTPUT_SKUS)
     salvar_modelo(modelo, OUTPUT_MODEL)
@@ -540,8 +525,8 @@ def secao_persistencia(
 
 def main() -> None:
     if not CORPUS_JSONL.exists():
-        log.error("Corpus não encontrado: '%s'", CORPUS_JSONL)
-        log.error("Execute preparar_corpus.py antes desta etapa.")
+        logger.error("Corpus não encontrado: '%s'", CORPUS_JSONL)
+        logger.error("Execute preparar_corpus.py antes desta etapa.")
         sys.exit(1)
 
     skus, sequencias = secao_carregamento()
