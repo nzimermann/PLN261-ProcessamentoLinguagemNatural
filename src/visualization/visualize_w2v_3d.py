@@ -100,7 +100,7 @@ PALETA: list[str] = [
     "#26A69A",  # Licor
     "#78909C",  # Conhaque
     "#EF5350",  # Tequila
-    "#AB47BC",  # Absinto
+    "#FF0000",  # Absinto
 ]
 
 COR_DESCONHECIDA: str = "#CCCCCC"
