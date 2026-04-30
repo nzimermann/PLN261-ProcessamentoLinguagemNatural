@@ -13,5 +13,8 @@ MODELS_DIR = ROOT_DIR / "models"
 VECTORS_BOW = MODELS_DIR / "bow"
 VECTORS_TFIDF = MODELS_DIR / "tfidf"
 VECTORS_W2V = MODELS_DIR / "w2v"
+VECTORS_BERT = MODELS_DIR / "bert"
+
+CORPUS_BERT = CORPUS_DIR / "corpus_bert.jsonl"
 
 REPORTS_DIR = ROOT_DIR / "reports"
