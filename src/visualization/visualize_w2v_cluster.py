@@ -318,7 +318,7 @@ def reduzir_para_2d(matriz: np.ndarray) -> np.ndarray:
     """
     if METODO_REDUCAO == "umap":
         try:
-            import umap  # noqa: PLC0415
+            import umap  # noqa: PLC0415 # pyright: ignore [reportMissingImports]
 
             logger.info(
                 "Reduzindo com UMAP (n_neighbors=%d, min_dist=%.2f, metric=%s)…",

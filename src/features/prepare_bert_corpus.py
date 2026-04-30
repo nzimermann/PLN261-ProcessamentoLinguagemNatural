@@ -23,7 +23,7 @@ from src.config import PROCESSED_DIR, CORPUS_DIR
 # Configuração
 # ---------------------------------------------------------------------------
 
-CSV_PATH    = PROCESSED_DIR / "products.csv"
+CSV_PATH = PROCESSED_DIR / "products.csv"
 OUTPUT_PATH = CORPUS_DIR / "corpus_bert.jsonl"
 
 # Número máximo de caracteres do texto final enviado ao BERT.
@@ -35,6 +35,7 @@ MAX_CHARS = 2000
 # ---------------------------------------------------------------------------
 # Montagem do texto
 # ---------------------------------------------------------------------------
+
 
 def montar_texto(row: pd.Series) -> str:
     """Concatena os campos do produto em texto corrido para o BERT.
@@ -51,15 +52,17 @@ def montar_texto(row: pd.Series) -> str:
 
     for campo in ["name", "brand", "category", "description"]:
         valor = row.get(campo)
-        if pd.notna(valor) and str(valor).strip():
+        if pd.isna(valor) == False and str(valor).strip():
             partes.append(str(valor).strip())
 
     texto = ". ".join(partes)
     return texto[:MAX_CHARS]
 
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
+
 
 def carregar_csv() -> pd.DataFrame:
     logger.info("Lendo CSV: %s", CSV_PATH)
@@ -82,10 +85,12 @@ def gerar_corpus(df: pd.DataFrame) -> list[dict]:
             ignorados += 1
             continue
 
-        corpus.append({
-            "sku":  row["sku"],
-            "texto": texto,
-        })
+        corpus.append(
+            {
+                "sku": row["sku"],
+                "texto": texto,
+            }
+        )
 
     if ignorados:
         logger.warning("%d produto(s) ignorados por texto vazio.", ignorados)
@@ -112,9 +117,11 @@ def inspecionar(corpus: list[dict]) -> None:
     print("CORPUS BERT — INSPEÇÃO")
     print("=" * 60)
     print(f"Total de registros : {len(corpus)}")
-    print(f"Caracteres/texto   : mín {min(comprimentos)} · "
-          f"méd {sum(comprimentos) // len(comprimentos)} · "
-          f"máx {max(comprimentos)}")
+    print(
+        f"Caracteres/texto   : mín {min(comprimentos)} · "
+        f"méd {sum(comprimentos) // len(comprimentos)} · "
+        f"máx {max(comprimentos)}"
+    )
     print(f"Limite configurado : {MAX_CHARS} caracteres")
     print(f"Arquivo de saída   : {OUTPUT_PATH}")
     print("\n--- Exemplo (primeiro registro) ---")
@@ -128,8 +135,9 @@ def inspecionar(corpus: list[dict]) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
-    df     = carregar_csv()
+    df = carregar_csv()
     corpus = gerar_corpus(df)
     salvar_jsonl(corpus)
     inspecionar(corpus)

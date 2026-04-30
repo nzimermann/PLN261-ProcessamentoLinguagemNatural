@@ -71,8 +71,14 @@ CATEGORIAS: dict[str, list[str]] = {
     "Rum": ["rum", "havana", "caribenho", "havano", "kraken"],
     "Cachaça": ["cachaça", "aguardente", "caipirinha", "alambique"],
     "Vinho": [
-        "vinho", "tinto", "branco", "rosé", "malbec",
-        "merlot", "cabernet", "chardonnay",
+        "vinho",
+        "tinto",
+        "branco",
+        "rosé",
+        "malbec",
+        "merlot",
+        "cabernet",
+        "chardonnay",
     ],
     "Espumante": ["espumante", "prosecco", "champagne", "cava", "brut", "cuvée"],
     "Cerveja": ["cerveja", "lager", "ale", "ipa", "pilsen", "malte", "lupulo"],
@@ -84,7 +90,7 @@ CATEGORIAS: dict[str, list[str]] = {
 
 PALETA: list[str] = [
     "#4C8EDA",  # Gin
-    "#E8A838",  # Whisky
+    "#C90057",  # Whisky
     "#6DC0C0",  # Vodka
     "#C45E3E",  # Rum
     "#8BC34A",  # Cachaça
@@ -238,7 +244,7 @@ def reduzir_para_3d(matriz: np.ndarray) -> np.ndarray:
     """Reduz a matriz de embeddings para 3D usando UMAP ou t-SNE."""
     if METODO_REDUCAO == "umap":
         try:
-            import umap  # noqa: PLC0415
+            import umap  # noqa: PLC0415 # pyright: ignore [reportMissingImports]
 
             logger.info(
                 "Reduzindo para 3D com UMAP (n_neighbors=%d, min_dist=%.2f, metric=%s)…",
@@ -462,7 +468,9 @@ def main() -> None:
     # 1. Carregamento
     print("\n[1/4] Carregando artefatos…")
     matriz, skus, modelo = carregar_artefatos()
-    print(f"      Produtos: {len(skus)}  |  Dimensões: {matriz.shape[1]}  |  Vocab: {len(modelo.wv)}")
+    print(
+        f"      Produtos: {len(skus)}  |  Dimensões: {matriz.shape[1]}  |  Vocab: {len(modelo.wv)}"
+    )
 
     # 2. Categorização
     print("\n[2/4] Categorizando produtos…")
