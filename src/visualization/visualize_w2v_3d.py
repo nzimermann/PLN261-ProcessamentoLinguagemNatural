@@ -372,7 +372,7 @@ def plotar_clusters_3d(
                 f"<b>Nome:</b> {nome}<br>"
                 f"<b>Categoria Modelo:</b> {cat_modelo}<br>"
                 f"<b>Categoria Real:</b> {cat_real}<br>"
-                # f"<b>Descrição:</b> {descricao}"
+                f"<b>Descrição:</b> {descricao}"
             )
             hover_texts.append(hover)
 
