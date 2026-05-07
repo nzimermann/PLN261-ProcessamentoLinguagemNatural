@@ -17,11 +17,13 @@ Uso programático:
 
 import csv
 import json
+import re
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
 
 import numpy as np
+from gensim.models import Word2Vec
 from sklearn.preprocessing import normalize
 
 from src import logger
@@ -35,7 +37,16 @@ from src.recommendation.clusterer import carregar as carregar_clusters
 
 MATRIX_PATH = VECTORS_W2V / "w2v_matrix.npy"
 SKUS_PATH = VECTORS_W2V / "w2v_skus.json"
+MODEL_PATH = VECTORS_W2V / "word2vec.model"
 PRODUCTS_CSV = PROCESSED_DIR / "products.csv"
+
+# Peso da similaridade semântica vs texto na busca.
+# 0.0 = só texto, 1.0 = só semântica.
+SEMANTIC_SEARCH_WEIGHT: float = 0.6
+
+# Mínimo de similaridade semântica para incluir um resultado
+# quando não há match textual.
+SEMANTIC_MIN_THRESHOLD: float = 0.3
 
 MAX_SAME_CLUSTER_DEFAULT: int = 7
 N_RECOMMENDATIONS_DEFAULT: int = 10
@@ -107,6 +118,7 @@ class RecommendationEngine:
         self._matriz_norm = normalize(self._matriz, norm="l2")
         self._clusters = carregar_clusters()
         self._produtos = self._carregar_produtos_csv()
+        self._w2v_model = self._carregar_modelo_w2v()
 
         # Índice SKU → posição na matriz para O(1) lookup
         self._sku_to_idx: dict[str, int] = {
@@ -165,36 +177,105 @@ class RecommendationEngine:
 
         return produtos
 
+    @staticmethod
+    def _carregar_modelo_w2v() -> Word2Vec:
+        if not MODEL_PATH.exists():
+            logger.error("Modelo W2V não encontrado: '%s'", MODEL_PATH)
+            sys.exit(1)
+        modelo = Word2Vec.load(str(MODEL_PATH))
+        logger.info("Modelo W2V carregado: %d tokens no vocabulário", len(modelo.wv))
+        return modelo
+
     # ------------------------------------------------------------------
-    # Busca por nome
+    # Busca semântica
     # ------------------------------------------------------------------
 
-    def search_by_name(self, query: str, max_results: int = 20) -> list[Product]:
-        """Busca produtos cujo nome contém a query (case-insensitive).
+    def _query_to_vector(self, query: str) -> np.ndarray | None:
+        """Converte uma query de busca em vetor W2V (mean pooling).
 
-        Retorna até max_results produtos ordenados por relevância
-        (match exato primeiro, depois parcial).
+        Tokeniza a query por espaços, busca cada token no vocabulário W2V.
+        Retorna None se nenhum token estiver no vocabulário.
+        """
+        tokens = re.findall(r"[a-záàâãéèêíïóôõúüç]+", query.lower())
+        vetores = [self._w2v_model.wv[t] for t in tokens if t in self._w2v_model.wv]
+        if not vetores:
+            return None
+        return np.mean(np.array(vetores), axis=0)
+
+    def search(self, query: str, max_results: int = 20) -> list[Product]:
+        """Busca produtos por nome, descrição e similaridade semântica.
+
+        Combina três sinais:
+        1. Match exato no nome (score máximo)
+        2. Match parcial no nome ou descrição (score alto)
+        3. Similaridade semântica W2V entre a query e o embedding
+           do produto (captura relações como velho↔envelhecido)
+
+        Os scores são combinados e os resultados ordenados por relevância.
         """
         query_lower = query.lower().strip()
         if not query_lower:
             return []
 
-        exact: list[Product] = []
-        partial: list[Product] = []
+        # Vetor semântico da query
+        query_vec = self._query_to_vector(query_lower)
+        sem_scores: np.ndarray | None = None
+        if query_vec is not None:
+            query_vec_norm = query_vec / (np.linalg.norm(query_vec) + 1e-10)
+            sem_scores = self._matriz_norm @ query_vec_norm  # (N,)
 
-        for sku in self._skus:
+        # Score combinado para cada produto
+        scored: list[tuple[float, str]] = []
+
+        for i, sku in enumerate(self._skus):
             product = self._produtos.get(sku)
             if product is None:
                 continue
 
             name_lower = product.name.lower()
-            if name_lower == query_lower:
-                exact.append(product)
-            elif query_lower in name_lower:
-                partial.append(product)
+            desc_lower = product.description.lower()
 
-        results = exact + partial
-        return results[:max_results]
+            # Score textual: 0.0 a 1.0
+            text_score = 0.0
+            if name_lower == query_lower:
+                text_score = 1.0
+            elif query_lower in name_lower:
+                text_score = 0.85
+            elif query_lower in desc_lower:
+                text_score = 0.5
+
+            # Score semântico: 0.0 a 1.0
+            sem_score = 0.0
+            if sem_scores is not None:
+                sem_score = max(0.0, float(sem_scores[i]))
+
+            # Score combinado
+            if text_score > 0:
+                # Tem match textual — combina com semântico
+                final_score = (
+                    (1 - SEMANTIC_SEARCH_WEIGHT) * text_score
+                    + SEMANTIC_SEARCH_WEIGHT * sem_score
+                )
+            elif sem_score >= SEMANTIC_MIN_THRESHOLD:
+                # Sem match textual, mas semanticamente relevante
+                final_score = SEMANTIC_SEARCH_WEIGHT * sem_score
+            else:
+                continue
+
+            scored.append((final_score, sku))
+
+        # Ordena por score decrescente
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        return [
+            self._produtos[sku]
+            for _, sku in scored[:max_results]
+            if sku in self._produtos
+        ]
+
+    def search_by_name(self, query: str, max_results: int = 20) -> list[Product]:
+        """Alias para search() — mantido para compatibilidade."""
+        return self.search(query, max_results)
 
     def get_product(self, sku: str) -> Product | None:
         """Retorna informações de um produto por SKU."""
