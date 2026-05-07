@@ -17,4 +17,7 @@ VECTORS_BERT = MODELS_DIR / "bert"
 
 CORPUS_BERT = CORPUS_DIR / "corpus_bert.jsonl"
 
+CLUSTERS_W2V_LABELS = VECTORS_W2V / "cluster_labels.json"
+CLUSTERS_W2V_CENTROIDS = VECTORS_W2V / "cluster_centroids.npy"
+
 REPORTS_DIR = ROOT_DIR / "reports"
