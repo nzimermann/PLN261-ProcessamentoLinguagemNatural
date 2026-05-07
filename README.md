@@ -36,6 +36,17 @@ flowchart TD
 ```
 
 ---
+## Rodando recomendador CLI
+
+```
+# 1. Gerar clusters (uma vez)
+python -m src.recommendation.clusterer
+
+# 2. Iniciar o recomendador
+python -m src.recommendation.cli
+```
+
+---
 
 - [x] Adicionar uma gráfico de visualização 3D do modelo gerado pelo Word2Vec
     - [x] Adicionar um tooltip por item para visualização de características do produto (sku, nome, descrição)
