@@ -1,0 +1,53 @@
+=================================================================
+ANÁLISE DE SENTIMENTOS — RELATÓRIO
+Modelo: nlptown/bert-base-multilingual-uncased-sentiment
+=================================================================
+
+Total de reviews analisadas : 12132
+Acertos exatos              : 8821/12132  (72.7%)
+Acertos dentro de ±1 estrela: 10729/12132  (88.4%)
+Erro médio absoluto         : 0.486 estrelas
+F1 macro                    : 0.2908
+F1 weighted                 : 0.7803
+
+Distribuição de ratings:
+Estrelas       Real   Predito
+------------------------------
+★               106       563
+★★               84       448
+★★★             187       789
+★★★★           1048      1459
+★★★★★         10707      8873
+
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           1       0.12      0.61      0.19       106
+           2       0.02      0.10      0.03        84
+           3       0.06      0.27      0.10       187
+           4       0.24      0.33      0.27      1048
+           5       0.94      0.78      0.85     10707
+
+    accuracy                           0.73     12132
+   macro avg       0.27      0.42      0.29     12132
+weighted avg       0.85      0.73      0.78     12132
+
+
+Exemplos com |erro| ≥ 2 estrelas (1403 total):
+-----------------------------------------------------------------
+  SKU     21 | Real: 5★ | Pred: 1★ | Chegou no prazo.
+  SKU     21 | Real: 5★ | Pred: 1★ | TABOM
+  SKU     21 | Real: 5★ | Pred: 3★ | Gostaria de receber meus produtos com a cx original
+  SKU     21 | Real: 5★ | Pred: 3★ | Parabéns pelo profissionalismo e atenção para comigo . Breve faremos novas compras. Grato.
+  SKU     21 | Real: 5★ | Pred: 2★ | Pena que acabou rápido kkkkkkk
+  SKU     21 | Real: 5★ | Pred: 3★ | Chegou rapido ate de mais era pro dia dos pais kkk
+  SKU     21 | Real: 5★ | Pred: 2★ | O produto chegou aos contentos . Quanto a entrega, um pequeno atrazo que quero acreditar ter sido problemas com os corre
+  SKU     21 | Real: 5★ | Pred: 1★ | o produto não sei porque foi presente, portanto somente posso avaliar o site, e neste ponto foi show, da compra a entreg
+  SKU     21 | Real: 5★ | Pred: 1★ | NÃO APENAS UM WHISKY E SIM UMA OBRA DE ARTE ...
+  SKU   1074 | Real: 5★ | Pred: 1★ | delicia de whisky, pena que é caro!
+  SKU   1074 | Real: 5★ | Pred: 2★ | Ótimo
+  SKU   1074 | Real: 5★ | Pred: 3★ | Só pela coloração do whisky você já nota que o produto é diferenciado. Teor alcoólico alto e gosto sofisticado.
+  SKU   1074 | Real: 5★ | Pred: 2★ | ótimo
+  SKU   1074 | Real: 5★ | Pred: 1★ | The Macallan, o Rolls Royce dos whiskies. Não é preciso dizer mais nada. Slainté!
+  SKU   1074 | Real: 5★ | Pred: 2★ | Ótimo
