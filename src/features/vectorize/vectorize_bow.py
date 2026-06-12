@@ -392,7 +392,7 @@ def secao_persistencia(
     print("SEÇÃO 6 — PERSISTÊNCIA")
     print("=" * 60)
 
-    VECTORS_BOW_DIR.mkdir(parents=True, exist_ok=True)
+    VECTORS_BOW.mkdir(parents=True, exist_ok=True)
     salvar_matriz(matriz, OUTPUT_MATRIX)
     salvar_json(skus, OUTPUT_SKUS, "SKUs")
     salvar_json(

@@ -15,6 +15,10 @@ VECTORS_TFIDF = MODELS_DIR / "tfidf"
 VECTORS_W2V = MODELS_DIR / "w2v"
 VECTORS_BERT = MODELS_DIR / "bert"
 
+VECTORS_RAG = MODELS_DIR / "rag"
+RAG_INDEX = VECTORS_RAG / "faiss.index"
+RAG_METADATA = VECTORS_RAG / "rag_metadata.json"
+
 CORPUS_BERT = CORPUS_DIR / "corpus_bert.jsonl"
 
 CLUSTERS_W2V_LABELS = VECTORS_W2V / "cluster_labels.json"
